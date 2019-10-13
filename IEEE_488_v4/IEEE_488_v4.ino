@@ -72,16 +72,18 @@ byte addr,command;
 
 // get listner address
   while(digitalRead(DAV) == HIGH){}
-  pinMode(NRFD,OUTPUT); // set low
-  delay(5);
+  pinMode(NRFD,OUTPUT);             // set line to indicate not ready for data
   addr = ~PINC ;
-  Serial.print("Device listen address = ");
-  Serial.println(addr,HEX);
-  pinMode(NDAC,INPUT);  // allow to go high
+  pinMode(NDAC,INPUT);              // allow to go high
   while(digitalRead(DAV) == LOW){}
+  if (addr != 0x29) {               // if the ATN message is for another device
+    pinMode(NRFD,INPUT);            // Set NRFD & NDAC to inputs to allow the addressed
+    pinMode(NDAC,INPUT);            // device to control them
+    return;
+  }
   pinMode(NDAC,OUTPUT);
   pinMode(NRFD,INPUT);
-  
+    
 // get command
   while(digitalRead(DAV) == HIGH){}
   pinMode(NRFD,OUTPUT);
@@ -424,7 +426,8 @@ void loop() {
   // put your main code here, to run repeatedly:
   byte Control;
   if (digitalRead(ATN) == 0) {
-      Serial.println("Attention sent by PET");
+      pinMode(NRFD,INPUT);
+      pinMode(NDAC,OUTPUT); 
       ATN_();
    }
  }

@@ -1,3 +1,8 @@
+//Author  : G Clark
+//Date    : 23 October 2019
+//Version : 1.0
+//Changes : Initial working version
+//
 const int DIO1 = 37;
 const int DIO2 = 36;
 const int DIO3 = 35;
@@ -46,13 +51,14 @@ File root;
   pinMode(NDAC,OUTPUT);
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(9600);
-  Serial.println("CBM 8050 emulator :");
+  Serial.println("CBM disk drive :");
 
-  if (card.init(SPI_HALF_SPEED, CS)) {
-    Serial.println("Memory card checked ok");
-  }
+//  if (card.init(SPI_HALF_SPEED, CS)) {
+//    Serial.println("Memory card checked ok");
+//  }
+
   if (!SD.begin(CS)) {
-    Serial.println("initialization failed!");
+    Serial.println("SD card initialization failed!");
     while (1);
   }
   root = SD.open("/");
@@ -91,12 +97,9 @@ byte addr,command;
   delay(5);
   pinMode(NDAC,OUTPUT);
 
-  if (command == 0xF1) { 
-    Save(); 
-  }
-  if (command == 0xF0) { 
-    Load(); 
-  }
+  if (command == 0xF1) {Save();}
+  if (command == 0xF0) {Load();}
+  
   return;
 }
 
@@ -222,15 +225,15 @@ Serial.println("Saving");
 }
 
 void Load(){
-byte addr,command,data,offset;
+byte addr,command,data;
 bool EOI_;
 char file_name[] = "00000000.PRG";
-int index;
+unsigned int index,offset;
 File file_;
 File dir;
 bool eof;
 
- byte footer[] = {0xDD,0x04,0xFF,0x07,0x42,0x4C,0x4F,0x43,0x4B,0x53,0x20,0x46,0x52
+ byte footer[] = {0xDD,0x04,0xFF,0xFF,0x42,0x4C,0x4F,0x43,0x4B,0x53,0x20,0x46,0x52
                  ,0x45,0x45,0x2E,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20
                  ,0x20,0x20,0x20,0x00,0x00,0x00};
  byte header[] = {0x01,0x04,0x1F,0x04,0x01,0x00,0x12,0x22,0x50,0x45,0x54,0x44,0x49
@@ -254,7 +257,7 @@ Serial.println("Loading");
       }
 //      delay(5);
       pinMode(NRFD,OUTPUT);
-      delay(5);
+//      delay(5);
       file_name[index] = (~PINC);
       Serial.print(char(file_name[index]));
       index=index+1;
@@ -266,9 +269,6 @@ Serial.println("Loading");
    }
 // Check if file exists and send error if not needs to go here
 // if filename is $ then need to send directory
-
-    Serial.println("");
-    Serial.println("file found");
     
     pinMode(NRFD,INPUT);
     while(digitalRead(DAV) == HIGH){}
@@ -302,6 +302,7 @@ Serial.println("Loading");
     delay(10);
 
 // Step 10 to 21 - Device is now the talker
+    Serial.println("");
     Serial.println("Sending file to the PET");
     DDRC = B11111111;
     pinMode(NRFD,INPUT);
@@ -310,8 +311,8 @@ Serial.println("Loading");
 //    digitalWrite(EOI,HIGH);
 //    pinMode(EOI,OUTPUT);
     pinMode(DAV,INPUT);
-    Serial.print("file name = ");
-    Serial.println(file_name);
+//    Serial.print("file name = ");
+//    Serial.println(file_name);
 
 // ######################################################################################    
     if (strcmp(file_name,"$0000000.PRG")==0) {
@@ -336,7 +337,7 @@ Serial.println("Loading");
           }
 
     eof = false;
-    offset = 0x3F;
+    offset = 0x043F;
     dir = SD.open("/");
    File entry =  dir.openNextFile();
     while(true){
@@ -344,7 +345,8 @@ Serial.println("Loading");
       Serial.println(entry.name());
       if (! entry) {break;}
       char* names = entry.name();
-      fname[0] = offset;
+      fname[0] = lowByte(offset);
+      fname[1] = highByte(offset);
       fname[2] = lowByte(entry.size());
       fname[3] = highByte(entry.size());
       for(int i=0;i<=7;i++){
@@ -396,37 +398,35 @@ Serial.println("Loading");
       }
 // ##########################################################################
           
-    else {
+    else if (SD.exists(file_name)){
     EOI_ = HIGH;
     index = 0;
     file_ = SD.open(file_name, FILE_READ);
+ 
+     while (EOI_ == HIGH) {         
 
-    while (EOI_ == HIGH) {         
-      digitalWrite(LED_BUILTIN, HIGH);
-      while(digitalRead(NRFD) == 0){}
       data=file_.read();
-      digitalWrite(DIO1,bitRead(~data,0));
-      digitalWrite(DIO2,bitRead(~data,1));
-      digitalWrite(DIO3,bitRead(~data,2));
-      digitalWrite(DIO4,bitRead(~data,3));
-      digitalWrite(DIO5,bitRead(~data,4));
-      digitalWrite(DIO6,bitRead(~data,5));
-      digitalWrite(DIO7,bitRead(~data,6));
-      digitalWrite(DIO8,bitRead(~data,7));
-      delay(5);
-      digitalWrite(LED_BUILTIN, LOW);
-      if (data == 0){
-        index = index +1;
-        }
-      else {
-        index = 0;
-        }
+      PORTC= ~data;
+//      digitalWrite(DIO1,bitRead(~data,0));
+//      digitalWrite(DIO2,bitRead(~data,1));
+//      digitalWrite(DIO3,bitRead(~data,2));
+//      digitalWrite(DIO4,bitRead(~data,3));
+//      digitalWrite(DIO5,bitRead(~data,4));
+//      digitalWrite(DIO6,bitRead(~data,5));
+//      digitalWrite(DIO7,bitRead(~data,6));
+//      digitalWrite(DIO8,bitRead(~data,7));
+//      data = ~PINC;
+//      Serial.print(data,HEX);Serial.print("-");
+      while(digitalRead(NRFD) == 0){}
+      delay(1);
+      if (data == 0){index = index +1;}
+      else {index = 0;}
       
       if( index == 3)  {
         EOI_ = LOW;
         pinMode(EOI,OUTPUT);
         delay(10);
-      }
+        }
       pinMode(DAV,OUTPUT);
       while(digitalRead(NDAC) == LOW){}
       delay(1);
@@ -436,6 +436,15 @@ Serial.println("Loading");
     }
 
    file_.close();
+   }
+   else {
+    Serial.println("");
+    Serial.println("File not found");
+            pinMode(EOI,OUTPUT);
+            pinMode(DAV,OUTPUT);
+            while(digitalRead(NDAC) == LOW){}
+                  pinMode(DAV,INPUT);
+      pinMode(EOI,INPUT);
    }
  
 // steps 22 to 25

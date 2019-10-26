@@ -8,7 +8,9 @@
 //Version : 1.1
 //Changes : Changed the end of program from detecting three 0x00 to reading the size of the file
 //          and pulling EOI down for the last byte. This will ensure any machine code after the
-//          basic program is also sent
+//          basic program is also sent.
+//          Built in LED set to follow bit 7 of the loading index variable so it flashes as a program
+//          is loaded.
 //
 const int DIO1 = 37;
 const int DIO2 = 36;
@@ -110,7 +112,7 @@ byte addr,command;
 void Save(){
 byte addr,command,drive;
 bool EOI_;
-char file_name[] = "        .PRG";
+char file_name[] = "00000000.PRG";
 int index;
 File file_;   
 
@@ -170,23 +172,20 @@ Serial.println("Saving");
     index = 0;
     EOI_ = HIGH;
     while (EOI_ == HIGH){
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(0);
       while(digitalRead(DAV) == HIGH){}
       if (digitalRead(EOI) == LOW){
         EOI_ = LOW;
       }
       pinMode(NRFD,OUTPUT);
-      delay(1);
-      digitalWrite(LED_BUILTIN, HIGH);
       file_.write(~PINC);
+      digitalWrite(LED_BUILTIN, bitRead(PINC,7));
       pinMode(NDAC,INPUT);   //Allow NDAC to go high, data read
       while(digitalRead(DAV) == LOW){}
       pinMode(NDAC,OUTPUT);  //NDAC low for next read
       pinMode(NRFD,INPUT);   //NRFD high to signal ready
     }
     file_.close();
-    
+    digitalWrite(LED_BUILTIN, LOW);   
     while(digitalRead(DAV) == HIGH){}
     pinMode(NRFD,OUTPUT); // set low
     delay(1);
@@ -388,7 +387,7 @@ drive=0;
       size_ = file_.size();
 
       while (EOI_ == HIGH) {         
-        digitalWrite(LED_BUILTIN, bitRead(index,4));
+        digitalWrite(LED_BUILTIN, bitRead(index,7));
         data=file_.read();
         PORTC= ~data;
         while(digitalRead(NRFD) == 0){}

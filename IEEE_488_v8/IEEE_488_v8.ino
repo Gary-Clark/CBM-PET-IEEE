@@ -393,12 +393,10 @@ drive=0;
         PORTC= ~data;
         while(digitalRead(NRFD) == 0){}
         index = index +1;
-        if (index == (size_ - 1)){
+        if (index == (size_)){
           EOI_ = LOW;
           pinMode(EOI,OUTPUT);
-          Serial.println("seen EOF");
-        }
-      
+        }      
         pinMode(DAV,OUTPUT);
  //       delay(1);
         while(digitalRead(NDAC) == LOW){}

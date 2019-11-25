@@ -1,3 +1,5 @@
 GPIB socket - RS part 239-1162
 
 SPI SD card interface - Amazon kwmobile 2x Micro SD Card Reader Module 5V Card Adapter
+
+I use a genuine Commodore IEEE-488 cable and supply 5V to the board using a modified PET cassette cable
